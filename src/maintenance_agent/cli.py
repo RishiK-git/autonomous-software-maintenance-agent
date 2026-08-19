@@ -1,7 +1,7 @@
 """CLI entry point: `scan-diff` and `scan-full` subcommands.
 
-`scan-full` runs a real read-only security scan (Phase 1a: LLM code review
-only — SCA integration lands in Phase 1b, issue filing in Phase 1c).
+`scan-full` runs a real scan: LLM code review + SCA dependency scanning,
+merged (Phase 1a + 1b). Issue filing lands in Phase 1c.
 `scan-diff` is still a Phase 0 stub; diff-scoped scanning lands in Phase 1d.
 """
 
@@ -11,10 +11,10 @@ import argparse
 import asyncio
 import sys
 
-from .agent.security_scan import run_security_scan
 from .config import ConfigError, Settings
 from .findings import ScanResult
 from .logging_utils import RunLog, configure_logging, logger
+from .scan import run_full_scan
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -53,7 +53,7 @@ def print_scan_result(scan_result: ScanResult) -> None:
             if finding.line_end is not None and finding.line_end != finding.line_start:
                 location += f"-{finding.line_end}"
 
-        print(f"[{finding.severity.value.upper()}] {finding.title}")
+        print(f"[{finding.severity.value.upper()}] {finding.title} ({finding.source.value})")
         print(f"  category:   {finding.category}")
         print(f"  location:   {location}")
         print(f"  confidence: {finding.confidence:.2f}")
@@ -66,7 +66,7 @@ async def _run_scan_full(args: argparse.Namespace, settings: Settings) -> int:
     run_log = RunLog(model=settings.model)
     logger.info("scan-full: repo=%s model=%s", args.repo, settings.model)
 
-    scan_result = await run_security_scan(
+    scan_result = await run_full_scan(
         repo_path=args.repo,
         settings=settings,
         run_log=run_log,
