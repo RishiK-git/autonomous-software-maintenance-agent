@@ -1,10 +1,10 @@
 """CLI entry point: `scan-diff` and `scan-full` subcommands.
 
-`scan-full` runs a real scan: LLM code review + SCA dependency scanning,
-merged (Phase 1a + 1b), and optionally files GitHub issues for new findings
-when --github-repo is given (Phase 1c). Without it, findings just print to
-stdout — a dry-run mode with no GitHub side effects.
-`scan-diff` is still a Phase 0 stub; diff-scoped scanning lands in Phase 1d.
+`scan-full` runs LLM code review + SCA dependency scanning, merged
+(Phase 1a + 1b). `scan-diff` scopes the LLM review to a git diff between two
+refs (Phase 1d) — cheaper, meant for per-commit/PR triggers. Both optionally
+file GitHub issues for new findings when --github-repo is given (Phase 1c);
+without it, findings just print to stdout (dry run, no GitHub side effects).
 """
 
 from __future__ import annotations
@@ -14,10 +14,11 @@ import asyncio
 import sys
 
 from .config import ConfigError, Settings
+from .diff import DiffError
 from .findings import ScanResult
 from .github.issues import FiledIssue, file_findings
 from .logging_utils import RunLog, configure_logging, logger
-from .scan import run_full_scan
+from .scan import run_diff_scan, run_full_scan
 
 
 def _parse_github_repo(value: str) -> tuple[str, str]:
@@ -60,6 +61,13 @@ def build_parser() -> argparse.ArgumentParser:
     scan_diff.add_argument("--repo", required=True, help="path to the target repository")
     scan_diff.add_argument("--base", required=True, help="base git ref")
     scan_diff.add_argument("--head", required=True, help="head git ref")
+    scan_diff.add_argument(
+        "--github-repo",
+        type=_parse_github_repo,
+        default=None,
+        metavar="OWNER/REPO",
+        help="file findings as GitHub issues on this repo; omit to print-only (dry run)",
+    )
 
     return parser
 
@@ -98,18 +106,12 @@ def print_filed_issues(filed: list[FiledIssue]) -> None:
     print(f"\n{new_count} issue(s) filed, {skipped_count} skipped.")
 
 
-async def _run_scan_full(args: argparse.Namespace, settings: Settings) -> int:
-    run_log = RunLog(model=settings.model)
-    logger.info("scan-full: repo=%s model=%s", args.repo, settings.model)
-
-    scan_result = await run_full_scan(
-        repo_path=args.repo,
-        settings=settings,
-        run_log=run_log,
-    )
-
-    if args.github_repo is not None:
-        owner, repo = args.github_repo
+def _report_scan_result(
+    scan_result: ScanResult, github_repo: tuple[str, str] | None, settings: Settings
+) -> None:
+    """File findings as GitHub issues if a target repo was given, else print them."""
+    if github_repo is not None:
+        owner, repo = github_repo
         filed = file_findings(
             owner=owner, repo=repo, token=settings.github_token, findings=scan_result.findings
         )
@@ -117,6 +119,14 @@ async def _run_scan_full(args: argparse.Namespace, settings: Settings) -> int:
     else:
         print_scan_result(scan_result)
 
+
+async def _run_scan_full(args: argparse.Namespace, settings: Settings) -> int:
+    run_log = RunLog(model=settings.model)
+    logger.info("scan-full: repo=%s model=%s", args.repo, settings.model)
+
+    scan_result = await run_full_scan(repo_path=args.repo, settings=settings, run_log=run_log)
+
+    _report_scan_result(scan_result, args.github_repo, settings)
     run_log.log_summary()
     return 0
 
@@ -125,17 +135,35 @@ def cmd_scan_full(args: argparse.Namespace, settings: Settings) -> int:
     return asyncio.run(_run_scan_full(args, settings))
 
 
-def cmd_scan_diff(args: argparse.Namespace, settings: Settings) -> int:
+async def _run_scan_diff(args: argparse.Namespace, settings: Settings) -> int:
     run_log = RunLog(model=settings.model)
     logger.info(
-        "scan-diff: repo=%s base=%s head=%s model=%s (not yet implemented)",
+        "scan-diff: repo=%s base=%s head=%s model=%s",
         args.repo,
         args.base,
         args.head,
         settings.model,
     )
+
+    try:
+        scan_result = await run_diff_scan(
+            repo_path=args.repo,
+            base=args.base,
+            head=args.head,
+            settings=settings,
+            run_log=run_log,
+        )
+    except DiffError as exc:
+        logger.error(str(exc))
+        return 1
+
+    _report_scan_result(scan_result, args.github_repo, settings)
     run_log.log_summary()
     return 0
+
+
+def cmd_scan_diff(args: argparse.Namespace, settings: Settings) -> int:
+    return asyncio.run(_run_scan_diff(args, settings))
 
 
 def main(argv: list[str] | None = None) -> int:
