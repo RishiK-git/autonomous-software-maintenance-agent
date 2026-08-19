@@ -60,6 +60,18 @@ Decisions specific to this phase:
 
 See `docs/roadmap.md` for the full build order and `docs/architecture.md` for what's deferred and why.
 
+### Running scans
+
+The CLI itself doesn't schedule anything — it's invoked by external triggers, matching the layered model of a cheap scan on every change plus a deeper periodic sweep:
+
+* `maintenance-agent scan-diff --repo <path> --base <ref> --head <ref>` — fast, LLM-only, scoped to a diff. Triggered by:
+  * `scripts/pre-push-scan-hook.sh` — local git hook, advisory only (never blocks a push), install with `cp scripts/pre-push-scan-hook.sh .git/hooks/pre-push && chmod +x .git/hooks/pre-push`
+  * `.github/workflows/security-scan.yml` — real CI workflow, runs on every PR to `main` and files GitHub issues (needs an `ANTHROPIC_API_KEY` repo secret)
+* `maintenance-agent scan-full --repo <path> --github-repo OWNER/REPO` — deeper, LLM review + SCA dependency scan. Triggered by:
+  * `scripts/full-scan.cron` — example crontab entry for a periodic sweep (e.g. nightly)
+
+Both subcommands print findings to stdout by default; add `--github-repo OWNER/REPO` to file them as GitHub issues instead (deduped against currently-open ones).
+
 ## Potential Maintenance Tasks
 
 Possible future tasks include:

@@ -1,0 +1,19 @@
+# Example crontab entry for a periodic full-repo security sweep — the "deep
+# scan on a schedule" half of the layered trigger model (see
+# docs/architecture.md). This runs the more expensive scan-full (LLM review
+# + SCA dependency scan) less often than the per-PR scan-diff, by design.
+#
+# Install with `crontab -e`, then paste a line like the one below after
+# editing the paths and OWNER/REPO. This example runs daily at 3am.
+#
+# cron runs with a minimal environment (no shell profile), so this sources
+# a .env file explicitly rather than assuming ANTHROPIC_API_KEY/GITHUB_TOKEN
+# are already set.
+#
+# For a more robust setup on a long-lived server (auto-restart on failure,
+# structured logging via journald, dependency ordering), a systemd timer +
+# service pair is the usual upgrade path from cron. Not included here to
+# keep this example minimal — the crontab line below is equivalent for a
+# single-machine setup, which is all Phase 1 needs.
+
+0 3 * * * cd /path/to/target/repo && /usr/bin/env bash -c 'set -a; source /path/to/autonomous-software-maintenance-agent/.env; set +a; exec /path/to/autonomous-software-maintenance-agent/.venv/bin/maintenance-agent scan-full --repo . --github-repo OWNER/REPO' >> /var/log/maintenance-agent-full-scan.log 2>&1

@@ -1,0 +1,58 @@
+# Runs a diff-scoped security scan on every pull request targeting main and
+# files findings as GitHub issues. This is the "on every commit/PR" half of
+# the layered trigger model (see docs/architecture.md) — the deeper,
+# more expensive scan-full runs separately on a schedule (see
+# scripts/full-scan.cron), not here. PR-triggered runs stay fast and cheap
+# by design.
+#
+# Required repo secret:
+#   ANTHROPIC_API_KEY — Anthropic Developer API key (metered; fund a small,
+#                        fixed amount — see docs/roadmap.md's cost-control
+#                        notes). Settings.max_cost_per_run_usd and
+#                        --max-turns/--max-budget on the Agent SDK query
+#                        cap spend per run regardless.
+# GITHUB_TOKEN is provided automatically by Actions; the `issues: write`
+# permission below is what lets it file issues.
+
+name: Security scan (diff)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  scan-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history needed to compute the merge-base diff
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install the claude CLI (Claude Agent SDK shells out to it)
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Install maintenance-agent
+        run: pip install -e .
+
+      - name: Run diff scan
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          maintenance-agent scan-diff \
+            --repo . \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha }}" \
+            --github-repo "${{ github.repository }}"
