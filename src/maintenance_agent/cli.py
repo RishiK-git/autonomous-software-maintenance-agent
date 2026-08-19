@@ -1,7 +1,9 @@
 """CLI entry point: `scan-diff` and `scan-full` subcommands.
 
 `scan-full` runs a real scan: LLM code review + SCA dependency scanning,
-merged (Phase 1a + 1b). Issue filing lands in Phase 1c.
+merged (Phase 1a + 1b), and optionally files GitHub issues for new findings
+when --github-repo is given (Phase 1c). Without it, findings just print to
+stdout — a dry-run mode with no GitHub side effects.
 `scan-diff` is still a Phase 0 stub; diff-scoped scanning lands in Phase 1d.
 """
 
@@ -13,8 +15,22 @@ import sys
 
 from .config import ConfigError, Settings
 from .findings import ScanResult
+from .github.issues import FiledIssue, file_findings
 from .logging_utils import RunLog, configure_logging, logger
 from .scan import run_full_scan
+
+
+def _parse_github_repo(value: str) -> tuple[str, str]:
+    if "/" not in value or value.count("/") != 1:
+        raise argparse.ArgumentTypeError(
+            f"--github-repo must be in 'owner/repo' form, got: {value!r}"
+        )
+    owner, repo = value.split("/")
+    if not owner or not repo:
+        raise argparse.ArgumentTypeError(
+            f"--github-repo must be in 'owner/repo' form, got: {value!r}"
+        )
+    return owner, repo
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,6 +46,13 @@ def build_parser() -> argparse.ArgumentParser:
         "scan-full", help="scan an entire repository for vulnerabilities"
     )
     scan_full.add_argument("--repo", required=True, help="path to the target repository")
+    scan_full.add_argument(
+        "--github-repo",
+        type=_parse_github_repo,
+        default=None,
+        metavar="OWNER/REPO",
+        help="file findings as GitHub issues on this repo; omit to print-only (dry run)",
+    )
 
     scan_diff = subparsers.add_parser(
         "scan-diff", help="scan only the diff between two refs"
@@ -62,6 +85,19 @@ def print_scan_result(scan_result: ScanResult) -> None:
         print()
 
 
+def print_filed_issues(filed: list[FiledIssue]) -> None:
+    if not filed:
+        print("No findings.")
+        return
+
+    new_count = sum(1 for f in filed if f.is_new)
+    skipped_count = len(filed) - new_count
+    for f in filed:
+        status = f.issue_url if f.issue_url else "skipped (already open or failed to file)"
+        print(f"[{f.finding.severity.value.upper()}] {f.finding.title} -> {status}")
+    print(f"\n{new_count} issue(s) filed, {skipped_count} skipped.")
+
+
 async def _run_scan_full(args: argparse.Namespace, settings: Settings) -> int:
     run_log = RunLog(model=settings.model)
     logger.info("scan-full: repo=%s model=%s", args.repo, settings.model)
@@ -72,7 +108,15 @@ async def _run_scan_full(args: argparse.Namespace, settings: Settings) -> int:
         run_log=run_log,
     )
 
-    print_scan_result(scan_result)
+    if args.github_repo is not None:
+        owner, repo = args.github_repo
+        filed = file_findings(
+            owner=owner, repo=repo, token=settings.github_token, findings=scan_result.findings
+        )
+        print_filed_issues(filed)
+    else:
+        print_scan_result(scan_result)
+
     run_log.log_summary()
     return 0
 
