@@ -161,13 +161,12 @@ Tasks:
 
 Potential future capabilities:
 
-* [ ] Sandboxed exploit/PoC verification for security findings (Docker, no network — confirms exploitability instead of just flagging patterns)
-* [ ] Fix + PR mode for security findings (matches the original end-to-end vision: inspect → plan → modify → test → diff → PR)
-* [ ] Dependency updates (as an actual fix, not just a flagged finding)
+* [ ] Dependency updates
 * [ ] Documentation maintenance
 * [ ] Test repair
+* [ ] Security maintenance
 * [ ] Code quality maintenance
-* [ ] Other maintenance task types beyond security
+* [ ] Scheduled repository scans
 * [ ] Automatic pull requests
 
 ## Scope Rule
