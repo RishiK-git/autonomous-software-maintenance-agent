@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "maintenance-agent"
+version = "0.1.0"
+description = "Autonomous software maintenance agent - Phase 1: security vulnerability scanning"
+requires-python = ">=3.10"
+dependencies = [
+    "claude-agent-sdk",
+    "pydantic>=2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[project.scripts]
+maintenance-agent = "maintenance_agent.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/maintenance_agent"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
