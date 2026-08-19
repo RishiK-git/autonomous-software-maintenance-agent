@@ -66,7 +66,7 @@ The agent should have a limited set of explicit tools.
 
 ## 3. Tool Layer
 
-**Phase 1**: uses the Claude Agent SDK's built-in tools (`Read`, `Grep`, `Glob`) for read-only repository exploration, plus a narrowly scoped `Bash` allowance used only to invoke the SCA scanner subprocess (not arbitrary shell access). This was chosen over hand-rolling equivalents (`list_files`, `search_code`, `read_file`, ...) to avoid writing and maintaining that plumbing — the SDK's tools give the same "explore whatever the agent deems necessary" autonomy with less code. `write_file`, `git_diff` (as a repo-modifying concept), and `run_tests` are not needed in Phase 1 since the agent never modifies the target repo.
+**Phase 1** (as built): uses the Claude Agent SDK's built-in tools (`Read`, `Grep`, `Glob`) for read-only repository exploration — no Bash access at all. This was chosen over hand-rolling equivalents (`list_files`, `search_code`, `read_file`, ...) to avoid writing and maintaining that plumbing — the SDK's tools give the same "explore whatever the agent deems necessary" autonomy with less code. Dependency/SCA scanning turned out not to need a Bash allowance either: it runs as a plain Python `subprocess` call in `sca/osv_scanner.py`, entirely outside the agent loop, so the agent's tool surface stays strictly read-only. `write_file`, `git_diff` (as a repo-modifying concept), and `run_tests` are not needed in Phase 1 since the agent never modifies the target repo.
 
 Tools available to the agent still have:
 
@@ -201,7 +201,7 @@ Potential limits:
 * Maximum iterations (Phase 1: SDK `max_turns` cap, config-driven)
 * Maximum runtime
 * Maximum tool calls
-* Maximum token/cost budget (Phase 1: accumulated usage logged per run against a configurable soft ceiling — see `docs/roadmap.md`)
+* Maximum token/cost budget (Phase 1: enforced directly by the SDK via `max_budget_usd`, config-driven — not just a soft ceiling we check after the fact — plus the run's actual usage/cost is logged from the SDK's own reported total)
 
 ## Architectural Principles
 

@@ -1,8 +1,10 @@
 """Runs a read-only security scan against a repository via the Claude Agent SDK.
 
-The agent explores with Read/Grep/Glob only (no write access, no Bash yet —
-Bash for SCA tooling is wired in Phase 1b) and returns findings as structured
-output. Filing/deduplicating GitHub issues from those findings is separate,
+The agent explores with Read/Grep/Glob only — no write access, no Bash at
+all. Dependency/SCA scanning (Phase 1b) runs separately via a plain Python
+subprocess call in sca/osv_scanner.py, not through the agent, so it never
+needed a Bash tool. The agent returns findings as structured output;
+filing/deduplicating GitHub issues from those findings is separate,
 deterministic code (github/issues.py, Phase 1c) — the LLM never files an
 issue directly.
 """

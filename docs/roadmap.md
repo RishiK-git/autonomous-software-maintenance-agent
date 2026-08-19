@@ -2,12 +2,12 @@
 
 ## Phase 0 — Project Setup
 
-* [ ] Initialize repository
-* [ ] Create Python project structure
-* [ ] Configure environment variables
-* [ ] Add pytest
-* [ ] Establish basic logging
-* [ ] Create initial README and architecture documentation
+* [x] Initialize repository
+* [x] Create Python project structure
+* [x] Configure environment variables
+* [x] Add pytest
+* [x] Establish basic logging
+* [x] Create initial README and architecture documentation
 
 ## Phase 1 — Security Scanning Agent (chosen task, report-only)
 
@@ -16,37 +16,37 @@ Goal: prove that an LLM agent can find real security vulnerabilities in a reposi
 Chosen task: **security vulnerability scanning**. Report only — no fix, no PR, no exploit/PoC execution (see `docs/architecture.md` for the full reasoning).
 
 ### Phase 0 — Project Setup
-* [ ] Initialize repository
-* [ ] Create Python project structure
-* [ ] Configure environment variables (`ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, model, cost cap)
-* [ ] Add pytest
-* [ ] Establish basic logging (tool calls, turns, token usage per run)
+* [x] Initialize repository
+* [x] Create Python project structure
+* [x] Configure environment variables (`ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, model, cost cap)
+* [x] Add pytest
+* [x] Establish basic logging (tool calls, turns, token usage per run)
 
 ### Phase 1a — Minimal scan loop
-* [ ] `Finding` / `ScanResult` structured output models
-* [ ] Claude Agent SDK query wrapper: read-only tools (`Read`/`Grep`/`Glob`), system prompt, `max_turns` cap
-* [ ] CLI prints findings to stdout against a local repo path
-* [ ] Demo: run against a repo with a planted vulnerability, see it detected
+* [x] `Finding` / `ScanResult` structured output models
+* [x] Claude Agent SDK query wrapper: read-only tools (`Read`/`Grep`/`Glob`), system prompt, `max_turns` cap
+* [x] CLI prints findings to stdout against a local repo path
+* [ ] Demo: run against a repo with a planted vulnerability, see it detected  _(pending: needs a live run with a funded API key)_
 
 ### Phase 1b — SCA (dependency) integration
-* [ ] Subprocess wrapper for a dependency/CVE scanner (e.g. `osv-scanner`), graceful skip if not installed
-* [ ] Merge SCA findings with LLM findings
-* [ ] Demo: a repo with a known-vulnerable dependency gets flagged
+* [x] Subprocess wrapper for a dependency/CVE scanner (e.g. `osv-scanner`), graceful skip if not installed
+* [x] Merge SCA findings with LLM findings
+* [ ] Demo: a repo with a known-vulnerable dependency gets flagged  _(pending: needs a live run with a funded API key)_
 
 ### Phase 1c — GitHub issue filing
-* [ ] GitHub REST client (PAT auth): create issue, list open issues
-* [ ] Dedup: don't re-file a finding already open
-* [ ] Demo: findings become real GitHub issues; re-running doesn't duplicate them
+* [x] GitHub REST client (PAT auth): create issue, list open issues
+* [x] Dedup: don't re-file a finding already open
+* [ ] Demo: findings become real GitHub issues; re-running doesn't duplicate them  _(pending: needs a live run with a funded API key)_
 
 ### Phase 1d — Diff-scan mode
-* [ ] Git diff extraction between two refs
-* [ ] `scan-diff` subcommand scoped to changed files/hunks only
-* [ ] Demo: a PR-sized diff gets a fast, cheap scan
+* [x] Git diff extraction between two refs
+* [x] `scan-diff` subcommand scoped to changed files/hunks only
+* [ ] Demo: a PR-sized diff gets a fast, cheap scan  _(pending: needs a live run with a funded API key)_
 
 ### Phase 1e — Trigger glue
-* [ ] Example git hook script invoking `scan-diff`
-* [ ] Example GitHub Actions workflow for CI-triggered diff scans
-* [ ] Example cron/systemd timer invoking `scan-full` on a schedule
+* [x] Example git hook script invoking `scan-diff`
+* [x] Example GitHub Actions workflow for CI-triggered diff scans
+* [x] Example cron/systemd timer invoking `scan-full` on a schedule
 
 ### Success Criteria
 
